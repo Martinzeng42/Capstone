@@ -23,9 +23,9 @@ def notification_handler(sender, data):
     elif len(data) >= 60:
         print("Likely sensor data received!")
 
-        # Head Pose starts at byte 8 (indexing from 0), 3 floats (12 bytes total)
+        # Head Pose starts at byte 9 (indexing from 0), 3 floats (12 bytes total)
         try:
-            yaw, pitch, roll = struct.unpack("<fff", data[8:20])
+            yaw, pitch, roll = struct.unpack("<fff", data[9:21])
             print(f"Head Pose -> Yaw: {yaw:.2f}, Pitch: {pitch:.2f}, Roll: {roll:.2f}")
         except Exception as e:
             print(f"Error decoding: {e}")
