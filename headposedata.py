@@ -3,7 +3,6 @@ from bleak import BleakClient
 
 # SensorTile MAC address 
 ADDRESS = "F8:47:EE:75:CB:80"      # Change to your specific one
-ADDRESS = "d9:04:c5:0e:ee:ff"  
 
 # UUIDs from your console:         # These should be the same for everyone
 SERVICE_UUID = "00000000-0004-11e1-9ab4-0002a5d5c51b"
