@@ -2,9 +2,10 @@ import asyncio
 from bleak import BleakClient
 
 # SensorTile MAC address 
-ADDRESS = "F8:47:EE:75:CB:80"  
+ADDRESS = "F8:47:EE:75:CB:80"      # Change to your specific one
+ADDRESS = "d9:04:c5:0e:ee:ff"  
 
-# UUIDs from your console:
+# UUIDs from your console:         # These should be the same for everyone
 SERVICE_UUID = "00000000-0004-11e1-9ab4-0002a5d5c51b"
 CHARACTERISTIC_01 = "00000001-0004-11e1-ac36-0002a5d5c51b"  # Notify
 CHARACTERISTIC_02 = "00000002-0004-11e1-ac36-0002a5d5c51b"  # Notify + Write
@@ -33,7 +34,7 @@ def notification_handler(sender, data):
 
 async def main():
     print("Connecting to SensorTile...")
-    async with BleakClient(ADDRESS) as client:
+    async with BleakClient(ADDRESS, timeout=60) as client:
         print("Connected to SensorTile")
 
         # Confirm characteristics
@@ -47,10 +48,10 @@ async def main():
         await client.start_notify(CHARACTERISTIC_02, notification_handler)
         print("Subscribed to both characteristics")
 
-        # Send start stream command: 01 32 0A
-        print("Sending start command (01 32 0A)...")
-        await client.write_gatt_char(CHARACTERISTIC_02, bytearray([0x01, 0x32, 0x0A]), response=False)
-        print("Sent start command (01 32 0A)")
+        # Send start stream command: 32 01 0A
+        print("Sending start command (32 01 0A)...")
+        await client.write_gatt_char(CHARACTERISTIC_02, bytearray([0x32, 0x01, 0x0A]), response=False)
+        print("Sent start command (32 01 0A)")
 
         print("Begin streaming...")
 
