@@ -63,7 +63,9 @@ void setup() {
   Serial.println("");
   Serial.println("WiFi connected");
   Serial.print("ESP32-CAM IP Address: ");
+  Serial.print("http://");
   Serial.print(WiFi.localIP());
+  Serial.print("/stream");
 
   startCameraServer();
 }
