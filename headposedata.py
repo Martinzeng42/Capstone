@@ -72,42 +72,82 @@ def notification_handler(sender, data):
             logging.error(f"Error decoding: {e}")
 
 
-async def main():
-    logging.info("Connecting to SensorTile...")
-    async with BleakClient(ADDRESS, timeout=60) as client:
-        if not client.is_connected:
-            logging.error("Failed to connect to SensorTile.")
-            return
-        logging.info("Connected to SensorTile.")
+async def run_ble_client():
+    try:
+        logging.info("Connecting to SensorTile...")
+        async with BleakClient(ADDRESS, timeout=60) as client:
+            if not client.is_connected:
+                logging.error("Failed to connect to SensorTile.")
+                return
+            logging.info("Connected to SensorTile.")
 
-        # Confirm characteristics
-        logging.info("Characteristic properties:")
-        for service in client.services:
-            for char in service.characteristics:
-                logging.info(f"{char.uuid} -> {char.properties}")
+            # (Optional) Print characteristics
+            for service in client.services:
+                for char in service.characteristics:
+                    logging.info(f"{char.uuid} -> {char.properties}")
 
-        # Subscribe to notifications on both custom characteristics
-        await client.start_notify(CHARACTERISTIC_01, notification_handler)
-        await client.start_notify(CHARACTERISTIC_02, notification_handler)
-        logging.info("Subscribed to both characteristics")
+            await client.start_notify(CHARACTERISTIC_01, notification_handler)
+            await client.start_notify(CHARACTERISTIC_02, notification_handler)
+            logging.info("Subscribed to both characteristics.")
 
-        # Send start stream command: 32 01 0A
-        logging.info("Sending start command (32 01 0A)...")
-        await client.write_gatt_char(CHARACTERISTIC_02, bytearray([0x32, 0x01, 0x0A]), response=False)
-        logging.info("Sent start command (32 01 0A)")
+            await client.write_gatt_char(CHARACTERISTIC_02, bytearray([0x32, 0x01, 0x0A]), response=False)
+            logging.info("Start stream command sent.")
 
-        logging.info("Begin streaming...")
-
-        # Wait and process notifications
-        try:
             while True:
                 await asyncio.sleep(1)
-        except KeyboardInterrupt:
-            logging.info("Stopping...")
 
-        # Stop notifications on exit
-        await client.stop_notify(CHARACTERISTIC_01)
-        await client.stop_notify(CHARACTERISTIC_02)
+    except asyncio.CancelledError:
+        logging.info("BLE client was cancelled. Cleaning up...")
+        try:
+            await client.stop_notify(CHARACTERISTIC_01)
+            await client.stop_notify(CHARACTERISTIC_02)
+        except Exception as e:
+            logging.warning(f"Error stopping notifications: {e}")
+        raise  # Let the cancellation continue
+        
+# Plotting Setup
+def animate(i):
+    plt.cla()
+    if df.empty:
+        return
 
-# Run main loop
-asyncio.run(main())
+    df_sorted = df.sort_values("timestamp")
+    timestamps = df_sorted["timestamp"]
+    for col, color in zip(["yaw", "pitch", "roll"], ["blue", "green", "red"]):
+        plt.plot(timestamps, df_sorted[col], label=col, color=color)
+        plt.plot(timestamps, df_sorted[col].rolling(10).mean(), linestyle='--', color=color, alpha=0.4)
+
+    plt.title("Real-Time Head Pose")
+    plt.ylabel("Degrees")
+    plt.xlabel("Time")
+    plt.xticks(rotation=45)
+    plt.legend(loc='upper left')
+    plt.tight_layout()
+
+# Run everything
+def main():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    task = loop.create_task(run_ble_client())
+
+    fig = plt.figure(figsize=(10, 6))
+    ani = animation.FuncAnimation(fig, animate, interval=500, cache_frame_data=False)
+
+    try:
+        plt.show()
+    except KeyboardInterrupt:
+        logging.info("KeyboardInterrupt received.")
+    finally:
+        logging.info("Shutting down BLE task...")
+        task.cancel()
+        try:
+            loop.run_until_complete(task)
+        except asyncio.CancelledError:
+            logging.info("BLE task cancelled cleanly.")
+        finally:
+            loop.close()
+            logging.info("Event loop closed.")
+
+# Run
+if __name__ == "__main__":
+    main()

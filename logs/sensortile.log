@@ -19,3 +19,6 @@ Notification from 00000002-0004-11e1-ac36-0002a5d5c51b (Handle: 20): Unknown:
 2025-07-13 18:28:24,688 [INFO] Hex: 01328a
 2025-07-13 18:28:24,689 [INFO] Length: 3 bytes
 2025-07-13 18:28:24,689 [WARNING] Packet too short (likely just ACK or status)
+2025-07-13 18:40:10,951 [INFO] Shutting down BLE task...
+2025-07-13 18:40:10,952 [INFO] BLE task cancelled cleanly.
+2025-07-13 18:40:10,952 [INFO] Event loop closed.
