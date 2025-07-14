@@ -1,65 +1,109 @@
 import asyncio
 from bleak import BleakClient
+import csv
+import logging
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+import os
+import pandas as pd
+import struct
 
 # SensorTile MAC address 
-ADDRESS = "F8:47:EE:75:CB:80"      # Change to your specific one
+ADDRESS = "e4:71:f8:94:a2:aa"      # Change to your specific one
 
 # UUIDs from your console:         # These should be the same for everyone
 SERVICE_UUID = "00000000-0004-11e1-9ab4-0002a5d5c51b"
 CHARACTERISTIC_01 = "00000001-0004-11e1-ac36-0002a5d5c51b"  # Notify
 CHARACTERISTIC_02 = "00000002-0004-11e1-ac36-0002a5d5c51b"  # Notify + Write
 
-# Notification handler
-import struct
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.FileHandler("logs/sensortile.log"),
+        logging.StreamHandler()
+    ]
+)
+
+CSV_FILE = "logs/csv/sensor_data.csv"
+CSV_HEADERS = ["timestamp", "yaw", "pitch", "roll"]
+SAVE_TO_CSV = True
+
+if not os.path.isfile(CSV_FILE):
+    with open(CSV_FILE, mode='w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(CSV_HEADERS)
+        logging.info(f"CSV file created with headers: {CSV_HEADERS}")
+        
+# Global dataframe
+df = pd.DataFrame(columns=["timestamp", "yaw", "pitch", "roll"])
 
 def notification_handler(sender, data):
-    print(f"\nNotification from {sender}:")
-    print(f"Hex: {data.hex()}")
-    print(f"Length: {len(data)} bytes")
+    logging.info(f"\nNotification from {sender}:")
+    logging.info(f"Hex: {data.hex()}")
+    logging.info(f"Length: {len(data)} bytes")
+    global df
 
     if len(data) < 10:
-        print("Packet too short (likely just ACK or status)")
+        logging.warning("Packet too short (likely just ACK or status)")
         return
     elif len(data) >= 60:
-        print("Likely sensor data received!")
+        logging.info("Likely sensor data received!")
 
         # Head Pose starts at byte 9 (indexing from 0), 3 floats (12 bytes total)
         try:
             yaw, pitch, roll = struct.unpack("<fff", data[9:21])
-            print(f"Head Pose -> Yaw: {yaw:.2f}, Pitch: {pitch:.2f}, Roll: {roll:.2f}")
+            timestamp = pd.Timestamp.now()
+
+            # Log to DataFrame
+            new_row = {"timestamp": timestamp, "yaw": yaw, "pitch": pitch, "roll": roll}
+            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+            # Keep last 30 seconds of data
+            df = df[df["timestamp"] > timestamp - pd.Timedelta(seconds=30)]
+            
+            logging.info(f"Head Pose -> Yaw: {yaw:.2f}, Pitch: {pitch:.2f}, Roll: {roll:.2f}")
+            # Append to csv
+            if SAVE_TO_CSV:
+                with open(CSV_FILE, mode='a', newline='') as f:
+                    writer = csv.writer(f)
+                    writer.writerow([timestamp.isoformat(), yaw, pitch, roll])
         except Exception as e:
-            print(f"Error decoding: {e}")
+            logging.error(f"Error decoding: {e}")
 
 
 async def main():
-    print("Connecting to SensorTile...")
+    logging.info("Connecting to SensorTile...")
     async with BleakClient(ADDRESS, timeout=60) as client:
-        print("Connected to SensorTile")
+        if not client.is_connected:
+            logging.error("Failed to connect to SensorTile.")
+            return
+        logging.info("Connected to SensorTile.")
 
         # Confirm characteristics
-        print("Characteristic properties:")
+        logging.info("Characteristic properties:")
         for service in client.services:
             for char in service.characteristics:
-                print(f"{char.uuid} -> {char.properties}")
+                logging.info(f"{char.uuid} -> {char.properties}")
 
         # Subscribe to notifications on both custom characteristics
         await client.start_notify(CHARACTERISTIC_01, notification_handler)
         await client.start_notify(CHARACTERISTIC_02, notification_handler)
-        print("Subscribed to both characteristics")
+        logging.info("Subscribed to both characteristics")
 
         # Send start stream command: 32 01 0A
-        print("Sending start command (32 01 0A)...")
+        logging.info("Sending start command (32 01 0A)...")
         await client.write_gatt_char(CHARACTERISTIC_02, bytearray([0x32, 0x01, 0x0A]), response=False)
-        print("Sent start command (32 01 0A)")
+        logging.info("Sent start command (32 01 0A)")
 
-        print("Begin streaming...")
+        logging.info("Begin streaming...")
 
         # Wait and process notifications
         try:
             while True:
                 await asyncio.sleep(1)
         except KeyboardInterrupt:
-            print("Stopping...")
+            logging.info("Stopping...")
 
         # Stop notifications on exit
         await client.stop_notify(CHARACTERISTIC_01)
