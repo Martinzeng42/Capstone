@@ -72,7 +72,7 @@ def notification_handler(sender, data):
             logging.error(f"Error decoding: {e}")
 
 
-async def run_ble_client():
+async def main():
     try:
         logging.info("Connecting to SensorTile...")
         async with BleakClient(ADDRESS, timeout=60) as client:
@@ -104,50 +104,6 @@ async def run_ble_client():
         except Exception as e:
             logging.warning(f"Error stopping notifications: {e}")
         raise  # Let the cancellation continue
-        
-# Plotting Setup
-def animate(i):
-    plt.cla()
-    if df.empty:
-        return
 
-    df_sorted = df.sort_values("timestamp")
-    timestamps = df_sorted["timestamp"]
-    for col, color in zip(["yaw", "pitch", "roll"], ["blue", "green", "red"]):
-        plt.plot(timestamps, df_sorted[col], label=col, color=color)
-        plt.plot(timestamps, df_sorted[col].rolling(10).mean(), linestyle='--', color=color, alpha=0.4)
-
-    plt.title("Real-Time Head Pose")
-    plt.ylabel("Degrees")
-    plt.xlabel("Time")
-    plt.xticks(rotation=45)
-    plt.legend(loc='upper left')
-    plt.tight_layout()
-
-# Run everything
-def main():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    task = loop.create_task(run_ble_client())
-
-    fig = plt.figure(figsize=(10, 6))
-    ani = animation.FuncAnimation(fig, animate, interval=500, cache_frame_data=False)
-
-    try:
-        plt.show()
-    except KeyboardInterrupt:
-        logging.info("KeyboardInterrupt received.")
-    finally:
-        logging.info("Shutting down BLE task...")
-        task.cancel()
-        try:
-            loop.run_until_complete(task)
-        except asyncio.CancelledError:
-            logging.info("BLE task cancelled cleanly.")
-        finally:
-            loop.close()
-            logging.info("Event loop closed.")
-
-# Run
-if __name__ == "__main__":
-    main()
+# Run main loop
+asyncio.run(main())
