@@ -17,12 +17,15 @@ def notification_handler(sender, data):
     print(f"Hex: {data.hex()}")
     print(f"Length: {len(data)} bytes")
 
-    if len(data) < 10:
-        print("Packet too short (likely just ACK or status)")
-        return
-    elif len(data) >= 60:
-        print("Likely sensor data received!")
+    # if len(data) < 10:
+    #     print("Packet too short (likely just ACK or status)")
+    #     return
+    # elif len(data) >= 60:
+    #     print("Likely sensor data received!")
 
+    if len(data) >= 20:
+        print("Likely sensor data received!")
+    
         # Head Pose starts at byte 9 (indexing from 0), 3 floats (12 bytes total)
         try:
             yaw, pitch, roll = struct.unpack("<fff", data[9:21])
