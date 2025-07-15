@@ -5,9 +5,7 @@ import logging
 import os
 import pandas as pd
 import struct
-
-# SensorTile MAC address 
-ADDRESS = "e4:71:f8:94:a2:aa"      # Change to your specific one
+from mac import ADDRESS
 
 # UUIDs from your console:         # These should be the same for everyone
 SERVICE_UUID = "00000000-0004-11e1-9ab4-0002a5d5c51b"
