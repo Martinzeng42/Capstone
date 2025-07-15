@@ -2,8 +2,6 @@ import asyncio
 from bleak import BleakClient
 import csv
 import logging
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
 import os
 import pandas as pd
 import struct
@@ -73,37 +71,39 @@ def notification_handler(sender, data):
 
 
 async def main():
-    try:
-        logging.info("Connecting to SensorTile...")
-        async with BleakClient(ADDRESS, timeout=60) as client:
-            if not client.is_connected:
-                logging.error("Failed to connect to SensorTile.")
-                return
-            logging.info("Connected to SensorTile.")
+    logging.info("Connecting to SensorTile...")
+    async with BleakClient(ADDRESS, timeout=60) as client:
+        if not client.is_connected:
+            logging.error("Failed to connect to SensorTile.")
+            return
+        logging.info("Connected to SensorTile.")
 
-            # (Optional) Print characteristics
-            for service in client.services:
-                for char in service.characteristics:
-                    logging.info(f"{char.uuid} -> {char.properties}")
+        # Print characteristics
+        logging.info("Characteristic properties:")
+        for service in client.services:
+            for char in service.characteristics:
+                logging.info(f"{char.uuid} -> {char.properties}")
 
-            await client.start_notify(CHARACTERISTIC_01, notification_handler)
-            await client.start_notify(CHARACTERISTIC_02, notification_handler)
-            logging.info("Subscribed to both characteristics.")
+        await client.start_notify(CHARACTERISTIC_01, notification_handler)
+        await client.start_notify(CHARACTERISTIC_02, notification_handler)
+        logging.info("Subscribed to both characteristics.")
 
-            await client.write_gatt_char(CHARACTERISTIC_02, bytearray([0x32, 0x01, 0x0A]), response=False)
-            logging.info("Start stream command sent.")
+        logging.info("Sending start command (32 01 0A)...")
+        await client.write_gatt_char(CHARACTERISTIC_02, bytearray([0x32, 0x01, 0x0A]), response=False)
+        logging.info("Sent start command (32 01 0A)")
 
+        logging.info("Begin streaming...")
+
+        # Wait and process notifications
+        try:
             while True:
                 await asyncio.sleep(1)
+        except KeyboardInterrupt:
+            logging.info("Stopping...")
 
-    except asyncio.CancelledError:
-        logging.info("BLE client was cancelled. Cleaning up...")
-        try:
-            await client.stop_notify(CHARACTERISTIC_01)
-            await client.stop_notify(CHARACTERISTIC_02)
-        except Exception as e:
-            logging.warning(f"Error stopping notifications: {e}")
-        raise  # Let the cancellation continue
+        # Stop notifications on exit
+        await client.stop_notify(CHARACTERISTIC_01)
+        await client.stop_notify(CHARACTERISTIC_02)
 
 # Run main loop
 asyncio.run(main())
