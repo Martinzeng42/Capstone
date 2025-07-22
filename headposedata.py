@@ -6,11 +6,8 @@ import os
 import pandas as pd
 import struct
 from mac import ADDRESS
-
-# UUIDs from your console:         # These should be the same for everyone
-SERVICE_UUID = "00000000-0004-11e1-9ab4-0002a5d5c51b"
-CHARACTERISTIC_01 = "00000001-0004-11e1-ac36-0002a5d5c51b"  # Notify
-CHARACTERISTIC_02 = "00000002-0004-11e1-ac36-0002a5d5c51b"  # Notify + Write
+from nod_detection import detect_nod
+from utils.constants import *
 
 # Setup logging
 logging.basicConfig(
@@ -22,18 +19,8 @@ logging.basicConfig(
     ]
 )
 
-CSV_FILE = "logs/csv/sensor_data.csv"
-CSV_HEADERS = ["timestamp", "yaw", "pitch", "roll"]
-SAVE_TO_CSV = True
-
-if not os.path.isfile(CSV_FILE):
-    with open(CSV_FILE, mode='w', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow(CSV_HEADERS)
-        logging.info(f"CSV file created with headers: {CSV_HEADERS}")
-        
-# Global dataframe
-df = pd.DataFrame(columns=["timestamp", "yaw", "pitch", "roll"])
+recent_yaw = []       # buffer of (timestamp, yaw)
+df = pd.DataFrame(columns=CSV_HEADERS)
 
 def notification_handler(sender, data):
     logging.info(f"\nNotification from {sender}:")
@@ -41,35 +28,33 @@ def notification_handler(sender, data):
     logging.info(f"Length: {len(data)} bytes")
     global df
 
-    # if len(data) < 10:
-    #     print("Packet too short (likely just ACK or status)")
-    #     return
-    # elif len(data) >= 60:
-    #     print("Likely sensor data received!")
-
-
     if len(data) >= 20:
         print("Likely sensor data received!")
-    
-        # Head Pose starts at byte 9 (indexing from 0), 3 floats (12 bytes total)
+
         try:
             yaw, pitch, roll = struct.unpack("<fff", data[9:21])
             timestamp = pd.Timestamp.now()
 
-            # Log to DataFrame
             new_row = {"timestamp": timestamp, "yaw": yaw, "pitch": pitch, "roll": roll}
             df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-            # Keep last 30 seconds of data
-            df = df[df["timestamp"] > timestamp - pd.Timedelta(seconds=30)]
-            
+            df = df[df["timestamp"] > timestamp - pd.Timedelta(seconds=5)]
+
             logging.info(f"Head Pose -> Yaw: {yaw:.2f}, Pitch: {pitch:.2f}, Roll: {roll:.2f}")
+
+            # Detect nod
+            if detect_nod(yaw, timestamp, recent_yaw):
+                logging.info("👤 Nod detected!")
+                breakpoint()
+
             # Append to csv
-            if SAVE_TO_CSV:
+            if SAVE_LOGS:
                 with open(CSV_FILE, mode='a', newline='') as f:
                     writer = csv.writer(f)
                     writer.writerow([timestamp.isoformat(), yaw, pitch, roll])
         except Exception as e:
             logging.error(f"Error decoding: {e}")
+
+
 
 
 async def main():
@@ -102,6 +87,11 @@ async def main():
                 await asyncio.sleep(1)
         except KeyboardInterrupt:
             logging.info("Stopping...")
+            
+        if SAVE_LOGS:
+            os.makedirs(os.path.dirname(CSV_FILE), exist_ok=True)
+            df.to_csv(CSV_FILE, index=False)
+            logging.info(f"Saved log to {CSV_FILE}")
 
         # Stop notifications on exit
         await client.stop_notify(CHARACTERISTIC_01)
