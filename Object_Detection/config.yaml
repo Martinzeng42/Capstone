@@ -1,0 +1,9 @@
+yolo_model: "C:/Users/noelu/Capstone/Object_Detection/yolo11n.pt"
+ip_stream_url: "http://192.168.0.153"
+imgsz: 160
+classes:
+  - 39
+  - 63
+  - 66
+  - 67
+  - 76
