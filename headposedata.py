@@ -1,6 +1,5 @@
 import asyncio
 from bleak import BleakClient
-import csv
 import logging
 import os
 import pandas as pd
@@ -21,36 +20,32 @@ logging.basicConfig(
 
 recent_yaw = []       # buffer of (timestamp, yaw)
 df = pd.DataFrame(columns=CSV_HEADERS)
+last_nod_time = None
+NOD_COOLDOWN = pd.Timedelta(seconds=1.0)
 
 def notification_handler(sender, data):
     logging.info(f"\nNotification from {sender}:")
     logging.info(f"Hex: {data.hex()}")
     logging.info(f"Length: {len(data)} bytes")
-    global df
+    global df, last_nod_time
 
     if len(data) >= 20:
-        print("Likely sensor data received!")
-
         try:
             yaw, pitch, roll = struct.unpack("<fff", data[9:21])
             timestamp = pd.Timestamp.now()
 
             new_row = {"timestamp": timestamp, "yaw": yaw, "pitch": pitch, "roll": roll}
             df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-            df = df[df["timestamp"] > timestamp - pd.Timedelta(seconds=5)]
+            df = df[df["timestamp"] > timestamp - pd.Timedelta(seconds=NOD_TIME_WINDOW)]
 
             logging.info(f"Head Pose -> Yaw: {yaw:.2f}, Pitch: {pitch:.2f}, Roll: {roll:.2f}")
 
             # Detect nod
-            if detect_nod(yaw, timestamp, recent_yaw):
-                logging.info("👤 Nod detected!")
+            if detect_nod(df) and (last_nod_time is None or (timestamp - last_nod_time) > NOD_COOLDOWN):
+                logging.info("Nod detected!")
+                last_nod_time = timestamp  # Reset cooldown
                 breakpoint()
 
-            # Append to csv
-            if SAVE_LOGS:
-                with open(CSV_FILE, mode='a', newline='') as f:
-                    writer = csv.writer(f)
-                    writer.writerow([timestamp.isoformat(), yaw, pitch, roll])
         except Exception as e:
             logging.error(f"Error decoding: {e}")
 

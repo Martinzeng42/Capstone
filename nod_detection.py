@@ -1,24 +1,27 @@
-import pandas as pd
-from utils.constants import NOD_MIN_AMPLITUDE, NOD_TIME_WINDOW
+import numpy as np
 
-def detect_nod(yaw, timestamp, recent_yaw):
-
-    # Update buffer
-    recent_yaw.append((timestamp, yaw))
-    recent_yaw = [(t, p) for t, p in recent_yaw if t > timestamp - pd.Timedelta(seconds=NOD_TIME_WINDOW)]
-
-    yaw_series = [p for _, p in recent_yaw]
-    if len(yaw_series) < 5:
+def detect_nod(df, min_amplitude=50):
+    """
+    Detects a nod based on a significant up and down movement in yaw.
+    Ensures that the yaw returns toward the other extreme.
+    """
+    yaw = df["yaw"].values
+    if len(yaw) < 3:
         return False
 
-    # Look for any local extremum (valley or peak)
-    for i in range(1, len(yaw_series) - 1):
-        p0, p1, p2 = yaw_series[i - 1], yaw_series[i], yaw_series[i + 1]
-        if (p1 < p0 and p1 < p2) or (p1 > p0 and p1 > p2):  # local min or max
-            delta1 = abs(p1 - p0)
-            delta2 = abs(p1 - p2)
-            if min(delta1, delta2) >= NOD_MIN_AMPLITUDE:
-                recent_yaw.clear()
-                return True
+    yaw_max = np.max(yaw)
+    yaw_min = np.min(yaw)
+    delta = yaw_max - yaw_min
+
+    if delta < min_amplitude:
+        return False
+
+    # Confirm that the movement returned toward the opposite extreme
+    latest_yaw = yaw[-1]
+    returned_to_min = abs(latest_yaw - yaw_min) < min_amplitude * 0.5
+    returned_to_max = abs(latest_yaw - yaw_max) < min_amplitude * 0.5
+
+    if returned_to_min or returned_to_max:
+        return True
 
     return False
