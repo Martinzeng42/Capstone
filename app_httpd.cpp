@@ -94,7 +94,7 @@ void startWebServer() {
     httpd_register_uri_handler(main_httpd, &stream_uri);
     printf("HTTP server started on port 80");
   } else {
-    printf("❌ Failed to start HTTP server");
+    printf("Failed to start HTTP server");
   }
 }
 
