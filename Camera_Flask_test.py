@@ -89,8 +89,8 @@ HTML_TEMPLATE = """
 <body>
     <h1>ESP32-CAM (TCP) Streaming</h1>
     <div class="controls">
-        <button onclick="startStream()">▶️ Start Preview</button>
-        <button onclick="stopStream()">⛔ Stop Preview</button>
+        <button onclick="startStream()">Start Preview</button>
+        <button onclick="stopStream()">Stop Preview</button>
     </div>
     <div id="videoContainer" style="display:none;">
         <h3>Live Video Feed:</h3>
