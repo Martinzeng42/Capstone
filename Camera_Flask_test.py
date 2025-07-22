@@ -1,183 +1,135 @@
-from flask import Flask, render_template_string, jsonify, redirect, url_for
+import socket
+import struct
+import cv2
+import numpy as np
+import threading
+import time
+from flask import Flask, render_template_string, jsonify, redirect, Response
 import requests
 
 app = Flask(__name__)
 
 # ESP32-CAM endpoints
-ESP32_BASE = "http://192.168.0.164"  # Replace with your ESP32 IP
-ESP32_STREAM = f"{ESP32_BASE}/stream"
-ESP32_START = f"{ESP32_BASE}/start_preview"
-ESP32_STOP = f"{ESP32_BASE}/stop_preview"
+ESP32_IP = '192.168.0.164'  # Replace with your ESP32 IP
+ESP32_PORT = 12345          # TCP port for ESP32 stream
 
+latest_frame = None
+running = True
+
+# ----------------------------
+# Background thread: receive TCP stream
+# ----------------------------
+def tcp_receiver():
+    global latest_frame, running
+    sock = socket.socket()
+    print(f"Connecting to ESP32 TCP stream at {ESP32_IP}:{ESP32_PORT}...")
+    sock.connect((ESP32_IP, ESP32_PORT))
+
+    try:
+        while running:
+            # Read 4-byte frame size
+            header = sock.recv(4)
+            if not header:
+                break
+            frame_size = struct.unpack('<I', header)[0]
+
+            # Read frame data
+            frame_data = b''
+            while len(frame_data) < frame_size:
+                chunk = sock.recv(frame_size - len(frame_data))
+                if not chunk:
+                    break
+                frame_data += chunk
+
+            # Decode JPEG to NumPy image
+            img = cv2.imdecode(np.frombuffer(frame_data, np.uint8), cv2.IMREAD_COLOR)
+            if img is not None:
+                latest_frame = img
+
+    except Exception as e:
+        print(f"TCP Receiver Error: {e}")
+    finally:
+        sock.close()
+        print("Disconnected from ESP32")
+
+
+# ----------------------------
+# Flask MJPEG video generator
+# ----------------------------
+def mjpeg_generator():
+    global latest_frame
+    while True:
+        if latest_frame is not None:
+            # Encode as JPEG for the browser
+            ret, jpeg = cv2.imencode('.jpg', latest_frame)
+            if ret:
+                frame_bytes = jpeg.tobytes()
+                yield (b'--frame\r\n'
+                       b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+        else:
+            time.sleep(0.01)
+
+
+# ----------------------------
+# Flask routes
+# ----------------------------
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>ESP32-CAM Control</title>
+    <title>ESP32-CAM TCP Streaming</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; margin: 0;}
+        body { font-family: Arial, sans-serif; text-align: center; }
         .controls { margin-bottom: 20px; display: block; }
         button { margin: 10px; padding: 10px 20px; font-size: 16px; }
-        #videoContainer { position: relative; display: none; margin: 0 auto; max-width: 640px; text-align: center; }
-        img { display: block; margin: 0 auto; border: 2px solid #333; max-width: 100%; }
-        canvas { position: absolute; top: 0; left: 0; pointer-events: none; }
+        #videoContainer { margin: 0 auto; max-width: 640px; text-align: center; }
+        img { width: 100%; border: 2px solid #333; }
     </style>
 </head>
 <body>
-    <h1>ESP32-CAM Streaming</h1>
+    <h1>ESP32-CAM (TCP) Streaming</h1>
     <div class="controls">
-        <form action="/start" method="get" style="display:inline-block;">
-            <button type="submit">▶️ Start Preview</button>
-        </form>
-        <button onclick="stopPreview()">⛔ Stop Preview</button>
+        <button onclick="startStream()">▶️ Start Preview</button>
+        <button onclick="stopStream()">⛔ Stop Preview</button>
     </div>
-
-    <div id="videoContainer">
+    <div id="videoContainer" style="display:none;">
         <h3>Live Video Feed:</h3>
-        <!-- MJPEG stream -->
-        <img id="videoFeed" src="" width="640">
-        <!-- Canvas for future object detection -->
-        <canvas id="overlayCanvas" width="640" height="480"></canvas>
+        <img id="videoFeed" src="/video_feed">
     </div>
 
     <script>
-        const streamUrl = "{{ esp_stream }}";
-
-        function showStream() {
-            const video = document.getElementById('videoFeed');
-            video.src = streamUrl;
-            document.getElementById('videoContainer').style.display = 'inline-block';
+        function startStream() {
+            document.getElementById('videoContainer').style.display = 'block';
+            document.getElementById('videoFeed').src = "/video_feed";
         }
-
-        function stopPreview() {
-            const video = document.getElementById('videoFeed');
-            video.src = "";  // Stop fetching video
+        function stopStream() {
+            document.getElementById('videoFeed').src = "";
             document.getElementById('videoContainer').style.display = 'none';
-
-            // Send async stop request to Flask (which will tell ESP32)
-            fetch('/stop', { method: 'POST' })
-                .then(() => console.log('Stop command sent'))
-                .catch(err => console.log('Error sending stop:', err));
         }
-
-        {% if streaming %}
-        showStream();
-        {% endif %}
     </script>
 </body>
 </html>
 """
 
-streaming_active = False
 
 @app.route('/')
 def index():
-    return render_template_string(HTML_TEMPLATE, esp_stream=ESP32_STREAM, streaming=streaming_active)
+    return render_template_string(HTML_TEMPLATE)
 
-@app.route('/start')
-def start_preview():
-    global streaming_active
-    try:
-        requests.get(ESP32_START, timeout=2)  # Start ESP32 preview
-        streaming_active = True
-    except Exception as e:
-        return f"Error starting stream: {e}<br><a href='/'>Back</a>"
-    return redirect(url_for('index'))
+@app.route('/video_feed')
+def video_feed():
+    return Response(mjpeg_generator(),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
 
-@app.route('/stop', methods=['POST'])
-def stop_preview():
-    global streaming_active
-    streaming_active = False
-    try:
-        # Tell ESP32 to stop but don’t block or crash if it times out
-        requests.get(ESP32_STOP, timeout=2)
-    except Exception:
-        pass  # Ignore errors — just ensure Flask doesn't crash
-    return jsonify({"status": "stopped"})
-    
+# ----------------------------
+# Main entry
+# ----------------------------
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    # Start the TCP receiver thread
+    t = threading.Thread(target=tcp_receiver, daemon=True)
+    t.start()
 
-
-# from flask import Flask, render_template_string, redirect, url_for
-# import requests
-
-# app = Flask(__name__)
-
-# # ESP32-CAM endpoints
-# ESP32_BASE = "http://192.168.0.164"  # Replace with your ESP32 IP
-# ESP32_STREAM = f"{ESP32_BASE}/stream"
-# ESP32_START = f"{ESP32_BASE}/start_preview"
-
-# HTML_TEMPLATE = """
-# <!DOCTYPE html>
-# <html>
-# <head>
-#     <title>ESP32-CAM Control</title>
-#     <style>
-#         body { font-family: Arial, sans-serif; text-align: center; }
-#         button { margin: 10px; padding: 10px 20px; font-size: 16px; }
-#         #videoContainer { margin-top: 20px; position: relative; display: none; }
-#         img { display: block; margin: 0 auto; border: 2px solid #333; max-width: 100%; }
-#         canvas { position: absolute; top: 0; left: 0; pointer-events: none; }
-#     </style>
-# </head>
-# <body>
-#     <h1>ESP32-CAM Streaming</h1>
-#     <form action="/start" method="get" style="display:inline;">
-#         <button type="submit">▶️ Start Preview</button>
-#     </form>
-#     <button onclick="stopPreview()">⛔ Stop Preview</button>
-
-#     <div id="videoContainer">
-#         <h3>Live Video Feed:</h3>
-#         <!-- MJPEG stream -->
-#         <img id="videoFeed" src="" width="640">
-#         <!-- Canvas for object detection overlay -->
-#         <canvas id="overlayCanvas" width="640" height="480"></canvas>
-#     </div>
-
-#     <script>
-#         const streamUrl = "{{ esp_stream }}";
-
-#         function showStream() {
-#             const video = document.getElementById('videoFeed');
-#             video.src = streamUrl;  // Start pulling MJPEG frames
-#             document.getElementById('videoContainer').style.display = 'inline-block';
-#         }
-
-#         function stopPreview() {
-#             const video = document.getElementById('videoFeed');
-#             video.src = "";  // Disconnect from MJPEG (pause fetching)
-#             document.getElementById('videoContainer').style.display = 'none';
-#         }
-
-#         // Auto-show stream if Flask set streaming = True
-#         {% if streaming %}
-#         showStream();
-#         {% endif %}
-#     </script>
-# </body>
-# </html>
-# """
-
-# streaming_active = False
-
-# @app.route('/')
-# def index():
-#     return render_template_string(HTML_TEMPLATE, esp_stream=ESP32_STREAM, streaming=streaming_active)
-
-# @app.route('/start')
-# def start_preview():
-#     global streaming_active
-#     try:
-#         requests.get(ESP32_START, timeout=2)  # Start ESP32 camera
-#         streaming_active = True
-#     except Exception as e:
-#         return f"Error starting stream: {e}<br><a href='/'>Back</a>"
-#     return redirect(url_for('index'))
-
-# # We REMOVE the /stop route completely — no call to ESP32
-
-# if __name__ == '__main__':
-#     app.run(host='0.0.0.0', port=5000)
+    try:
+        app.run(host='0.0.0.0', port=5000, threaded=True)
+    finally:
+        running = False

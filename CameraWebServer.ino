@@ -14,6 +14,7 @@ const char *password = "brocktonPHLIMA";
 // ======================================
 // Forward declarations
 // ======================================
+WiFiServer tcpServer(12345);  // TCP server on port 12345
 void startWebServer();
 
 
@@ -42,7 +43,7 @@ void setup() {
   config.pin_pwdn = PWDN_GPIO_NUM;
   config.pin_reset = RESET_GPIO_NUM;
   config.xclk_freq_hz = 20000000;
-  config.frame_size = FRAMESIZE_SVGA;
+  config.frame_size = FRAMESIZE_VGA;
   config.pixel_format = PIXFORMAT_JPEG;  // for streaming
   //config.pixel_format = PIXFORMAT_RGB565; // for face detection/recognition
   config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
@@ -72,10 +73,32 @@ void setup() {
   Serial.print("/stream");
 
   // Start only the trigger command server
-  startWebServer();
+  tcpServer.begin();
+  Serial.println("TCP server started on port 12345");
 }
 
 void loop() {
-  // Do nothing. Everything is done in another task by the web server
-  delay(10000);
+  WiFiClient client = tcpServer.available();
+  if (client) {
+    Serial.println("Client connected");
+    while (client.connected()) {
+      camera_fb_t *fb = esp_camera_fb_get();
+      if (!fb) {
+        Serial.println("Capture failed");
+        continue;
+      }
+
+      // Send frame length (4 bytes)
+      uint32_t frameLen = fb->len;
+      client.write((uint8_t*)&frameLen, sizeof(frameLen));
+
+      // Send JPEG frame
+      client.write(fb->buf, fb->len);
+      esp_camera_fb_return(fb);
+
+      delay(30);  // ~30 FPS cap
+    }
+    client.stop();
+    Serial.println("Client disconnected");
+  }
 }
