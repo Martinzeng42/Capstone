@@ -1,6 +1,6 @@
 import numpy as np
 
-def detect_nod(df, min_amplitude=50):
+def detect_nod(df, min_amplitude):
     """
     Detects a nod based on a significant up and down movement in yaw.
     Ensures that the yaw returns toward the other extreme.
@@ -18,10 +18,10 @@ def detect_nod(df, min_amplitude=50):
 
     # Confirm that the movement returned toward the opposite extreme
     latest_yaw = yaw[-1]
-    returned_to_min = abs(latest_yaw - yaw_min) < min_amplitude * 0.5
-    returned_to_max = abs(latest_yaw - yaw_max) < min_amplitude * 0.5
+    returned_to_min =  yaw_max - latest_yaw > min_amplitude
 
-    if returned_to_min or returned_to_max:
+    if returned_to_min:
+        breakpoint()
         return True
 
     return False

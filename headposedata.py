@@ -24,9 +24,9 @@ last_nod_time = None
 NOD_COOLDOWN = pd.Timedelta(seconds=1.0)
 
 def notification_handler(sender, data):
-    logging.info(f"\nNotification from {sender}:")
-    logging.info(f"Hex: {data.hex()}")
-    logging.info(f"Length: {len(data)} bytes")
+    #logging.info(f"\nNotification from {sender}:")
+    #logging.info(f"Hex: {data.hex()}")
+    #logging.info(f"Length: {len(data)} bytes")
     global df, last_nod_time
 
     if len(data) >= 20:
@@ -38,13 +38,12 @@ def notification_handler(sender, data):
             df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
             df = df[df["timestamp"] > timestamp - pd.Timedelta(seconds=NOD_TIME_WINDOW)]
 
-            logging.info(f"Head Pose -> Yaw: {yaw:.2f}, Pitch: {pitch:.2f}, Roll: {roll:.2f}")
+            #logging.info(f"Head Pose -> Yaw: {yaw:.2f}, Pitch: {pitch:.2f}, Roll: {roll:.2f}")
 
             # Detect nod
-            if detect_nod(df) and (last_nod_time is None or (timestamp - last_nod_time) > NOD_COOLDOWN):
+            if detect_nod(df, NOD_MIN_AMPLITUDE) and (last_nod_time is None or (timestamp - last_nod_time) > NOD_COOLDOWN):
                 logging.info("Nod detected!")
                 last_nod_time = timestamp  # Reset cooldown
-                breakpoint()
 
         except Exception as e:
             logging.error(f"Error decoding: {e}")
