@@ -31,7 +31,7 @@ def notification_handler(sender, data):
 
     if len(data) >= 20:
         try:
-            yaw, pitch, roll = struct.unpack("<fff", data[9:21])
+            yaw, pitch, roll = struct.unpack("<fff", data[33:45])
             timestamp = pd.Timestamp.now()
 
             new_row = {"timestamp": timestamp, "yaw": yaw, "pitch": pitch, "roll": roll}
