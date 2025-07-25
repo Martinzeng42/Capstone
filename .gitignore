@@ -2,3 +2,5 @@ logs/
 __pycache__/
 mac.py
 /local_versions
+/Object_Detection/ARCHIVE
+.idea

@@ -1,6 +1,7 @@
-yolo_model: "C:/Users/noelu/Capstone/Object_Detection/yolo11n.pt"
 ip_stream_url: "http://192.168.0.153"
-imgsz: 160
+yolo_model: "yolo11n.pt"    # ex) "yolov8n.pt", "yolo11n.pt"
+imgsz: 640
+conf: 0.4    # default is 0.25
 classes:
   - 39
   - 63
