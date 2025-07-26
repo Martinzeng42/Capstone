@@ -5,7 +5,7 @@ from pathlib import Path
 import sys
 import traceback
 
-CSV_FILE = Path("logs/csv/sensor_data.csv")
+CSV_FILE = Path("sensortile/logs/csv/sensor_data.csv")
 
 app = QtWidgets.QApplication(sys.argv)
 win = pg.GraphicsLayoutWidget(title="SensorTile Live Head Pose")

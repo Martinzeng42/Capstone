@@ -1,4 +1,4 @@
-CSV_FILE = "logs/csv/sensor_data.csv"
+CSV_FILE = "sensortile/logs/csv/sensor_data.csv"
 CSV_HEADERS = ["timestamp", "yaw", "pitch", "roll"]
 SAVE_LOGS = False
 NOD_MIN_AMPLITUDE = 40
