@@ -23,16 +23,17 @@ async def main():
         if not client.is_connected:
             logging.error("Failed to connect to SensorTile.")
             return
-
         logging.info("Connected to SensorTile.")
-        for service in client.services:
-            for char in service.characteristics:
-                logging.info(f"{char.uuid} -> {char.properties}")
+        if SAVE_LOGS:
+            for service in client.services:
+                for char in service.characteristics:
+                    logging.info(f"{char.uuid} -> {char.properties}")
 
         await client.start_notify(CHARACTERISTIC_01, handler.handle_notification)
         await client.start_notify(CHARACTERISTIC_02, handler.handle_notification)
 
-        logging.info("Sending start command...")
+        if SAVE_LOGS:
+            logging.info("Sending start command...")
         await client.write_gatt_char(CHARACTERISTIC_02, bytearray([0x32, 0x01, 0x0A]), response=False)
 
         logging.info("Begin streaming...")
