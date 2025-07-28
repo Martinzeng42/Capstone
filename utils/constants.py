@@ -1,7 +1,7 @@
 import pandas as pd
 
 CSV_FILE = "sensortile/logs/csv/sensor_data.csv"
-CSV_HEADERS = ["timestamp", "yaw", "pitch", "roll"]
+CSV_HEADERS = ["timestamp", "yaw", "pitch", "roll", "vafe"]
 SAVE_LOGS = False
 
 NOD_MIN_AMPLITUDE = 40

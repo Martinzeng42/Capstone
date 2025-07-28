@@ -19,14 +19,15 @@ class SensorTileHandler:
         if len(data) >= 45:
             try:
                 yaw, pitch, roll = struct.unpack("<fff", data[33:45])
+                vafe = struct.unpack("<f", data[61:65])[0]
                 timestamp = pd.Timestamp.now()
 
-                new_row = {"timestamp": timestamp, "yaw": yaw, "pitch": pitch, "roll": roll}
+                new_row = {"timestamp": timestamp, "yaw": yaw, "pitch": pitch, "roll": roll, "vafe": vafe}
                 self.df = pd.concat([self.df, pd.DataFrame([new_row])], ignore_index=True)
                 self.df = self.df[self.df["timestamp"] > timestamp - pd.Timedelta(seconds=NOD_TIME_WINDOW)]
 
                 if SAVE_LOGS:
-                    logging.info(f"Head Pose -> Yaw: {yaw:.2f}, Pitch: {pitch:.2f}, Roll: {roll:.2f}")
+                    logging.info(f"Head Pose -> Yaw: {yaw:.2f}, Pitch: {pitch:.2f}, Roll: {roll:.2f}, Vafe: {vafe:.2f}")
 
                 if self.last_nod_time is None or (timestamp - self.last_nod_time) > NOD_COOLDOWN:
                     if detect_nod_up(self.df, NOD_MIN_AMPLITUDE):
