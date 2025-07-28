@@ -37,6 +37,7 @@ async def main():
         await client.write_gatt_char(CHARACTERISTIC_02, bytearray([0x32, 0x01, 0x0A]), response=False)
 
         logging.info("Begin streaming...")
+        logging.info("Setup start")
 
         try:
             while True:

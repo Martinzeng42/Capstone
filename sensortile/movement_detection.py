@@ -48,3 +48,17 @@ def detect_nod_down(df, min_amplitude):
         return True
 
     return False
+
+def detect_roll(df, min_amplitude):
+    roll = df["roll"].values
+    if len(roll) < 3:
+        return False
+
+    roll_max = np.max(roll)
+    roll_min = np.min(roll)
+    delta = roll_max - roll_min
+
+    if delta < min_amplitude:
+        return False
+
+    return True
