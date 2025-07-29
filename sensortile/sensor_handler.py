@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import logging
 import os
@@ -8,9 +9,11 @@ from utils.constants import CSV_HEADERS, NOD_TIME_WINDOW, NOD_MIN_AMPLITUDE, SAV
 class SensorTileHandler:
     def __init__(self):
         self.data = pd.DataFrame(columns=CSV_HEADERS)
-        self.object_pos = pd.DataFrame(columns=["yaw", "pitch"])
+        self.object_pos = pd.DataFrame(columns=["item", "yaw", "pitch"])
         self.last_nod_time = None
         self.setup = True
+        self.connected_objects = ["phone", "light", "tv"]
+        self.object_index = 0
 
     def handle_notification(self, sender, data):
         if SAVE_LOGS:
@@ -32,14 +35,16 @@ class SensorTileHandler:
                     logging.info(f"Head Pose -> Yaw: {yaw:.2f}, Pitch: {pitch:.2f}, Roll: {roll:.2f}, Vafe: {vafe:.2f}")
 
                 if self.last_nod_time is None or (timestamp - self.last_nod_time) > NOD_COOLDOWN:
-                    if detect_nod_up(self.data, NOD_MIN_AMPLITUDE):
-                        self.setup = False
-                        logging.info("Nod up detected, setup complete!")
+                    if detect_nod_up(self.data, NOD_MIN_AMPLITUDE) and not self.setup:
+                        logging.info(f"The closest object position is the {self.find_closest_view(yaw, pitch)['item']}")
                     elif self.setup and detect_roll(self.data, ROLL_MIN_AMPLITUDE):
-                        logging.info("Roll detected, saving object position.")
-                        position = {"yaw": yaw, "pitch": pitch}
+                        logging.info(f"Roll detected, saving {self.connected_objects[self.object_index]}'s position -> Yaw: {yaw:.2f}, Pitch: {pitch:.2f}")
+                        position = {"item": self.connected_objects[self.object_index], "yaw": yaw, "pitch": pitch}
                         self.object_pos = pd.concat([self.object_pos, pd.DataFrame([position])], ignore_index=True)
-                        print(self.object_pos)
+                        self.object_index += 1
+                        if self.object_index == len(self.connected_objects):
+                            self.setup = False
+                            logging.info("Setup complete")
                     self.last_nod_time = timestamp
             except Exception as e:
                 logging.error(f"Error decoding data: {e}")
@@ -48,3 +53,22 @@ class SensorTileHandler:
         os.makedirs(os.path.dirname(path), exist_ok=True)
         self.data.to_csv(path, index=False)
         logging.info(f"Saved log to {path}")
+    
+    def angular_distance(self, yaw1, pitch1, yaw2, pitch2):
+        yaw1 = yaw1 % 360
+        yaw2 = yaw2 % 360
+        
+        dyaw = np.abs(yaw1 - yaw2)
+        dyaw = np.minimum(dyaw, 360 - dyaw)
+
+        dpitch = np.abs(pitch1 - pitch2)
+
+        return np.sqrt(dyaw**2 + dpitch**2)
+
+    def find_closest_view(self, new_yaw, new_pitch):
+        distances = self.object_pos.apply(
+            lambda row: self.angular_distance(new_yaw, new_pitch, row['yaw'], row['pitch']),
+            axis=1
+        )
+        closest_idx = distances.idxmin()
+        return self.object_pos.loc[closest_idx]
