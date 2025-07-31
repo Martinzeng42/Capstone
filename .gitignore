@@ -1,3 +1,4 @@
-logs/
+sensortile/logs/csv
+sensortile/logs/sensortile.log
 __pycache__/
 mac.py
