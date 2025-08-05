@@ -97,12 +97,13 @@ if __name__ == "__main__":
             tcp_ready = check_TCPdevice(ip, smart_device_TCPPORT)
             flask_ready = check_FLASKdevice(ip, smart_device_FLASKPORT)
             
-
+            # TCP Connection
             # if tcp_ready:
             #     print(f"TCP device found at {ip}")
             #     ready_devices[ip] = smart_device_TCPPORT
             #     smart_devices.append(ip)
 
+            # Flask Connection
             if flask_ready:
                 print(f"Flask device found at {ip}")
                 ready_devices[ip] = smart_device_FLASKPORT
