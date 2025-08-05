@@ -23,8 +23,16 @@ class SensorTileHandler:
 
         if len(data) >= 45:
             try:
-                yaw, pitch, roll = struct.unpack("<fff", data[33:45])
-                vafe = struct.unpack("<f", data[61:65])[0]
+                # yaw, pitch, roll = struct.unpack("<fff", data[33:45])
+                # vafe = struct.unpack("<f", data[61:65])[0]
+                yaw, pitch, roll = struct.unpack("<fff", data[9:21])
+            
+                # QVAR/vAFE (ECG) at bytes 61-64
+                if len(data) >= 65:
+                    vafe, = struct.unpack("<f", data[61:65])
+                else:
+                    vafe = float("nan")
+                    
                 timestamp = pd.Timestamp.now()
 
                 new_row = {"timestamp": timestamp, "yaw": yaw, "pitch": pitch, "roll": roll, "vafe": vafe}
