@@ -19,7 +19,7 @@ logging.basicConfig(
 async def main():
     ### Scan network
     scan = Scan_Network()
-    devices, _ = scan.get_devices_list()
+    devices = scan.get_devices_list()
     if not devices:
         logging.error("No device to connect to.")
         return
