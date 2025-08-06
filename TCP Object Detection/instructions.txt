@@ -1,0 +1,12 @@
+1. pip install ultralytics
+
+2. Usage:
+    - edit config.yaml to change your ip_stream_url (only line you need to change)
+    - run yolo_command_objects.py
+
+    - press "Esc" to exit the program
+    - press "p" to start/stop stream
+    - press spacebar to do object detection.
+        - You can press it when the stream is paused too. It'll just turn on the stream first then run object detection. There is a slight (but noticeable) delay when starting the stream.
+        - Additionally if an object is detected, a set of dummy commands will be displayed.
+        - If multiple objects are present, the centermost object is selected.

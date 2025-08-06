@@ -1,0 +1,10 @@
+ip_stream_url: "http://192.168.0.153"
+yolo_model: "yolo11n.pt"    # ex) "yolov8n.pt", "yolo11n.pt"
+imgsz: 640
+conf: 0.4    # default is 0.25
+classes:
+  - 39
+  - 63
+  - 66
+  - 67
+  - 76
