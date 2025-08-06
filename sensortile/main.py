@@ -25,7 +25,7 @@ async def main():
         return
             
     ### Connect to Sensortile
-    handler = SensorTileHandler(devices)
+    handler = SensorTileHandler(devices, scan)
     logging.info("Connecting to SensorTile...")
 
     async with BleakClient(ADDRESS, timeout=60) as client:

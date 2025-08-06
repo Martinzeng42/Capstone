@@ -98,6 +98,19 @@ class Scan_Network:
 
     def get_protocol_IP(self, ip):
         return self.ready_devices[ip]
+    
+    def run_command(self, ip, action):
+        if action:
+            if self.ready_devices[ip] == self.smart_device_TCPPORT:
+                self.send_TCPcommand(ip, "turnon")
+            elif self.ready_devices[ip] == self.smart_device_FLASKPORT:
+                self.send_FLASKcommand(ip, "turnon")
+        else:
+            if self.ready_devices[ip] == self.smart_device_TCPPORT:
+                self.send_TCPcommand(ip, "turnoff")
+            elif self.ready_devices[ip] == self.smart_device_FLASKPORT:
+                self.send_FLASKcommand(ip, "turnoff")
+            
 
     def run(self):
         devices = self.get_devices_list()
@@ -128,6 +141,6 @@ class Scan_Network:
             except (IndexError, ValueError):
                 print("Invalid selection.")
 
-if __name__ == "__main__":
-    scan = Scan_Network()
-    scan.run()
+# if __name__ == "__main__":
+#     scan = Scan_Network()
+#     scan.run()
