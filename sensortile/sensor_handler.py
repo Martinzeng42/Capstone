@@ -7,12 +7,12 @@ from sensortile.movement_detection import detect_nod_up, detect_roll
 from utils.constants import CSV_HEADERS, NOD_TIME_WINDOW, NOD_MIN_AMPLITUDE, SAVE_LOGS, NOD_COOLDOWN, ROLL_MIN_AMPLITUDE
 
 class SensorTileHandler:
-    def __init__(self):
+    def __init__(self, devices):
         self.data = pd.DataFrame(columns=CSV_HEADERS)
         self.object_pos = pd.DataFrame(columns=["item", "yaw", "pitch"])
         self.last_nod_time = None
         self.setup = True
-        self.connected_objects = ["phone", "light", "tv"]
+        self.devices = devices
         self.object_index = 0
 
     def handle_notification(self, sender, data):

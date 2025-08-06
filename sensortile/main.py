@@ -4,6 +4,7 @@ import logging
 from mac import ADDRESS
 from sensortile.sensor_handler import SensorTileHandler
 from utils.constants import CHARACTERISTIC_01, CHARACTERISTIC_02, CSV_FILE, SAVE_LOGS
+from Scan_Network.scan_network import Scan_Network
 
 # Setup logging
 logging.basicConfig(
@@ -16,7 +17,20 @@ logging.basicConfig(
 )
 
 async def main():
-    handler = SensorTileHandler()
+    ### Scan network
+    scan = Scan_Network()
+    devices, _ = scan.get_devices_list()
+    if not devices:
+        logging.error("No devices found (network may be isolated).")
+    else: 
+        logging.info("Devices on your network:")
+        for d in devices:
+            ip = d["ip"]
+            mac = d["mac"]
+            logging.info(f"{ip} -> {mac}")
+            
+    ### Connect to Sensortile
+    handler = SensorTileHandler(devices)
     logging.info("Connecting to SensorTile...")
 
     async with BleakClient(ADDRESS, timeout=60) as client:
