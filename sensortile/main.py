@@ -21,13 +21,8 @@ async def main():
     scan = Scan_Network()
     devices, _ = scan.get_devices_list()
     if not devices:
-        logging.error("No devices found (network may be isolated).")
-    else: 
-        logging.info("Devices on your network:")
-        for d in devices:
-            ip = d["ip"]
-            mac = d["mac"]
-            logging.info(f"{ip} -> {mac}")
+        logging.error("No device to connect to.")
+        return
             
     ### Connect to Sensortile
     handler = SensorTileHandler(devices)
