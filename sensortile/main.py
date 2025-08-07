@@ -19,13 +19,13 @@ logging.basicConfig(
 async def main():
     ### Scan network
     scan = Scan_Network()
-    devices = scan.get_devices_list()
-    if not devices:
+    ips = scan.get_devices_list()
+    if not ips:
         logging.error("No device to connect to.")
         return
             
     ### Connect to Sensortile
-    handler = SensorTileHandler(devices, scan)
+    handler = SensorTileHandler(ips, scan)
     logging.info("Connecting to SensorTile...")
 
     async with BleakClient(ADDRESS, timeout=60) as client:
