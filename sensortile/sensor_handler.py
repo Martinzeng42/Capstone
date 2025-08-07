@@ -7,15 +7,15 @@ from sensortile.movement_detection import detect_nod_up, detect_roll
 from utils.constants import CSV_HEADERS, NOD_TIME_WINDOW, NOD_MIN_AMPLITUDE, SAVE_LOGS, NOD_COOLDOWN, ROLL_MIN_AMPLITUDE
 
 class SensorTileHandler:
-    def __init__(self, devices, scan):
+    def __init__(self, ips, scan):
         self.data = pd.DataFrame(columns=CSV_HEADERS)
-        self.object_pos = pd.DataFrame(columns=["item", "yaw", "pitch"])
+        self.object_pos = pd.DataFrame(columns=["ip", "yaw", "pitch"])
         self.last_nod_time = None
         self.setup = True
-        self.devices = devices
+        self.ips = ips
         self.scan = scan
         self.object_index = 0
-        self.state = {device : False for device in self.devices}
+        self.state = {ip : False for ip in self.ips}
 
     def handle_notification(self, sender, data):
         if SAVE_LOGS:
@@ -38,14 +38,14 @@ class SensorTileHandler:
 
                 if self.last_nod_time is None or (timestamp - self.last_nod_time) > NOD_COOLDOWN:
                     if detect_nod_up(self.data, NOD_MIN_AMPLITUDE) and not self.setup:
-                        ip = self.find_closest_view(yaw, pitch)['item']
+                        ip = self.find_closest_view(yaw, pitch)['ip']
                         logging.info(f"The closest object position is the {ip}")
                         self.state[ip] = not self.state[ip]
                         self.scan.run_command(ip, self.state[ip])
                         
                     elif self.setup and detect_roll(self.data, ROLL_MIN_AMPLITUDE):
                         logging.info(f"Roll detected, saving {self.connected_objects[self.object_index]}'s position -> Yaw: {yaw:.2f}, Pitch: {pitch:.2f}")
-                        position = {"item": self.connected_objects[self.object_index], "yaw": yaw, "pitch": pitch}
+                        position = {"ip": self.connected_objects[self.object_index], "yaw": yaw, "pitch": pitch}
                         self.object_pos = pd.concat([self.object_pos, pd.DataFrame([position])], ignore_index=True)
                         self.object_index += 1
                         if self.object_index == len(self.connected_objects):
