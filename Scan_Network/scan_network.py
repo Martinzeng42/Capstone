@@ -51,8 +51,9 @@ class Scan_Network:
 
     def check_FLASKdevice(self, ip):
         try:
-            url = f"http://{ip}:{self.smart_device_FLASKPORT}/ready"
-            r = requests.get(url, timeout=1)
+            URL = "http://{0}:{1}/{2}".format(ip, self.smart_device_FLASKPORT, "ready")
+            r = requests.get(URL, timeout=1)
+            print(r.text)
             if r.status_code == 200 and "device is ready" in r.text.lower():
                 print(f"Device at {ip} is ready.")
                 return True
@@ -83,9 +84,12 @@ class Scan_Network:
                 ip = d["ip"]
                 
                 # Check TCP or Flask readiness
-                tcp_ready = self.check_TCPdevice(ip)
                 flask_ready = self.check_FLASKdevice(ip)
+                tcp_ready = self.check_TCPdevice(ip)
                 
+                if ip == "10.0.0.7":
+                    print(flask_ready)
+ 
                 # TCP Connection
                 if tcp_ready:
                     print(f"TCP device found at {ip}")

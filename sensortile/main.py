@@ -33,10 +33,10 @@ async def main():
             logging.error("Failed to connect to SensorTile.")
             return
         logging.info("Connected to SensorTile.")
-        if SAVE_LOGS:
-            for service in client.services:
-                for char in service.characteristics:
-                    logging.info(f"{char.uuid} -> {char.properties}")
+        # if SAVE_LOGS:
+        for service in client.services:
+            for char in service.characteristics:
+                logging.info(f"{char.uuid} -> {char.properties}")
 
         await client.start_notify(CHARACTERISTIC_01, handler.handle_notification)
         await client.start_notify(CHARACTERISTIC_02, handler.handle_notification)
