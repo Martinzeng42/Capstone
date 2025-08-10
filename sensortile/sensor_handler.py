@@ -44,11 +44,11 @@ class SensorTileHandler:
                         self.scan.run_command(ip, self.state[ip])
                         
                     elif self.setup and detect_roll(self.data, ROLL_MIN_AMPLITUDE):
-                        logging.info(f"Roll detected, saving {self.connected_objects[self.object_index]}'s position -> Yaw: {yaw:.2f}, Pitch: {pitch:.2f}")
-                        position = {"ip": self.connected_objects[self.object_index], "yaw": yaw, "pitch": pitch}
+                        logging.info(f"Roll detected, saving {self.ips[self.object_index]}'s position -> Yaw: {yaw:.2f}, Pitch: {pitch:.2f}")
+                        position = {"ip": self.ips[self.object_index], "yaw": yaw, "pitch": pitch}
                         self.object_pos = pd.concat([self.object_pos, pd.DataFrame([position])], ignore_index=True)
                         self.object_index += 1
-                        if self.object_index == len(self.connected_objects):
+                        if self.object_index == len(self.ips):
                             self.setup = False
                             logging.info("Setup complete")
                     self.last_nod_time = timestamp
