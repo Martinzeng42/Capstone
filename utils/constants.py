@@ -5,7 +5,7 @@ CSV_HEADERS = ["timestamp", "yaw", "pitch", "roll", "vafe"]
 SAVE_LOGS = False
 
 ROLL_MIN_AMPLITUDE = 20
-NOD_MIN_AMPLITUDE = 70
+NOD_MIN_AMPLITUDE = 10
 NOD_TIME_WINDOW = 1.5   # seconds
 NOD_COOLDOWN = pd.Timedelta(seconds=2.0)
 

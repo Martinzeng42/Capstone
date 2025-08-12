@@ -3,7 +3,7 @@ import pandas as pd
 import logging
 import os
 import struct
-from sensortile.movement_detection import detect_nod_up, detect_roll
+from sensortile.movement_detection import detect_nod, detect_roll
 from utils.constants import CSV_HEADERS, NOD_TIME_WINDOW, NOD_MIN_AMPLITUDE, SAVE_LOGS, NOD_COOLDOWN, ROLL_MIN_AMPLITUDE
 
 class SensorTileHandler:
@@ -37,7 +37,7 @@ class SensorTileHandler:
                     logging.info(f"Head Pose -> Yaw: {yaw:.2f}, Pitch: {pitch:.2f}, Roll: {roll:.2f}, Vafe: {vafe:.2f}")
 
                 if self.last_nod_time is None or (timestamp - self.last_nod_time) > NOD_COOLDOWN:
-                    if detect_nod_up(self.data, NOD_MIN_AMPLITUDE) and not self.setup:
+                    if not self.setup and detect_nod(self.data, NOD_MIN_AMPLITUDE):
                         ip = self.find_closest_view(yaw, pitch)['item']
                         logging.info(f"The closest object position is the {ip}")
                         self.state[ip] = not self.state[ip]
