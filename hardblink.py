@@ -344,6 +344,8 @@ def notification_handler(sender, data: bytearray):
                 
                 if blink_detected:
                     logging.info(f"🔥 HARD BLINK DETECTED! Amplitude: {baseline_corrected:.2f}mV")
+                    asyncio.sleep(3)
+                    
                     
     except Exception as e:
         logging.error(f"Error in notification handler: {e}")
