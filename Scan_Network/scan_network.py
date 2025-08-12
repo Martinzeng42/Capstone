@@ -53,7 +53,6 @@ class Scan_Network:
         try:
             URL = "http://{0}:{1}/{2}".format(ip, self.smart_device_FLASKPORT, "ready")
             r = requests.get(URL, timeout=1)
-            print(r.text)
             if r.status_code == 200 and "device is ready" in r.text.lower():
                 print(f"Device at {ip} is ready.")
                 return True
