@@ -66,8 +66,8 @@ class Scan_Network:
             url = f"http://{ip}:{self.smart_device_FLASKPORT}/{command}"
             r = requests.get(url, timeout=1)
             print(f"Sent '{command}' to {ip}:{self.smart_device_FLASKPORT}")
-        except:
-            pass
+        except Exception as e:
+            print(f"Error sending command to {ip}: {e}")
 
     def add_devices(self, ip, port):
         if (ip not in self.IP_smart_devices):
@@ -86,9 +86,6 @@ class Scan_Network:
                 # Check TCP or Flask readiness
                 flask_ready = self.check_FLASKdevice(ip)
                 tcp_ready = self.check_TCPdevice(ip)
-                
-                if ip == "10.0.0.7":
-                    print(flask_ready)
  
                 # TCP Connection
                 if tcp_ready:
