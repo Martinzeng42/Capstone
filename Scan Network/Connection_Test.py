@@ -94,5 +94,6 @@ def tcp_server():
 
 # 🔧 Flask startup + background TCP
 if __name__ == "__main__":
-    threading.Thread(target=tcp_server, daemon=True).start()
+    # threading.Thread(target=tcp_server, daemon=True).start()
+    # tcp_server()
     app.run(host="0.0.0.0", port=3333, debug=False)
