@@ -45,7 +45,7 @@ class SensorTileHandler:
                         
                     elif self.setup and detect_roll(self.data, ROLL_MIN_AMPLITUDE):
                         logging.info(f"Roll detected, saving {self.ips[self.object_index]}'s position -> Yaw: {yaw:.2f}, Pitch: {pitch:.2f}")
-                        position = {"ip": self.ips[self.object_index], "yaw": yaw, "pitch": pitch}
+                        position = {"item": self.ips[self.object_index], "yaw": yaw, "pitch": pitch}
                         self.object_pos = pd.concat([self.object_pos, pd.DataFrame([position])], ignore_index=True)
                         self.object_index += 1
                         if self.object_index == len(self.ips):
