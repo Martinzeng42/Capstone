@@ -4,13 +4,14 @@ import logging
 import os
 import struct
 from sensortile.movement_detection import detect_nod, detect_roll, detect_nod_up, detect_nod_down
-from utils.constants import CSV_HEADERS, NOD_TIME_WINDOW, NOD_MIN_AMPLITUDE, SAVE_LOGS, NOD_COOLDOWN, ROLL_MIN_AMPLITUDE, CALIBRATION_WAIT_S, CALIBRATION_COOLDOWN
+from utils.constants import CSV_HEADERS, NOD_TIME_WINDOW, NOD_MIN_AMPLITUDE, SAVE_LOGS, NOD_COOLDOWN, ROLL_MIN_AMPLITUDE, CALIBRATION_WAIT_S, CALIBRATION_WAIT_TRIGGER, CALIBRATION_COOLDOWN
 
 class SensorTileHandler:
     def __init__(self, devices, scan):
         self.data = pd.DataFrame(columns=CSV_HEADERS)
         self.object_pos = pd.DataFrame(columns=["item", "yaw", "pitch"])
         self.last_nod_time = None
+        self.last_roll_time = None
         self.setup = True
         self.devices = devices      # List of IP strings
         self.scan = scan            # Scan_Network class instance
@@ -37,6 +38,13 @@ class SensorTileHandler:
         self.calibration_step()
 
     def calibration_step(self):
+        # Turn off previous device if any
+        if self.cal_current_ip is not None:
+            try:
+                self.scan.run_command(self.cal_current_ip, False)
+            except Exception as e:
+                logging.warning(f"Failed to turn off {self.cal_current_ip}: {e}")
+        
         # Finished condition
         if self.cal_index >= len(self.devices):
             self.mode = "NORMAL"
@@ -45,13 +53,6 @@ class SensorTileHandler:
             logging.info("Setup complete and Calibration finished. Entering NORMAL mode.")
             return
 
-        # Turn off previous device if any
-        if self.cal_current_ip is not None:
-            try:
-                self.scan.run_command(self.cal_current_ip, False)
-            except Exception as e:
-                logging.warning(f"Failed to turn off {self.cal_current_ip}: {e}")
-        
         # Move to next device
         self.cal_current_ip = self.devices[self.cal_index]
         self.cal_started_at = pd.Timestamp.now()
@@ -82,19 +83,31 @@ class SensorTileHandler:
                 if SAVE_LOGS:
                     logging.info(f"Head Pose -> Yaw: {yaw:.2f}, Pitch: {pitch:.2f}, Roll: {roll:.2f}, Vafe: {vafe:.2f}")
                 
+                # === SETUP MODE TO START CALIBRATION===
+                if self.setup and self.mode != "CALIBRATING":
+                    if detect_nod(self.data, NOD_MIN_AMPLITUDE) and ((self.last_nod_time is None) or ((timestamp - self.last_nod_time) > CALIBRATION_COOLDOWN and (timestamp - self.last_nod_time).total_seconds() < CALIBRATION_WAIT_TRIGGER)):
+                        # simple counter for nods
+                        if not hasattr(self, "setup_nod_count"):
+                            self.setup_nod_count = 0
+                        self.setup_nod_count += 1
+                        self.last_nod_time = timestamp
+                        logging.info(f"[SETUP] Nod detected ({self.setup_nod_count}/2)")
+                        if self.setup_nod_count >= 2:
+                            logging.info("[SETUP] Double nod detected — starting calibration.")
+                            self.start_calibration()
+
                 # === CALIBRATION MODE ===
                 if self.mode == "CALIBRATING":
                     # Timeout handling
-                    if self.cal_started_at and (timestamp - self.cal_started_at).total_seconds() > CALIBRATION_WAIT_S:
+                    if (timestamp - self.cal_started_at).total_seconds() > CALIBRATION_WAIT_S:
                         logging.info(f"[CALIBRATE] Timeout for {self.cal_current_ip}. Skipping...")
                         self.cal_index += 1
                         self.calibration_step()
-                        return
 
                     # Check gestures
                     # NOD = confirm mapping
                     if (self.last_nod_time is None) or (timestamp - self.last_nod_time) > NOD_COOLDOWN:
-                        if detect_nod_down(self.data, NOD_MIN_AMPLITUDE):
+                        if detect_nod(self.data, NOD_MIN_AMPLITUDE):
                             self.last_nod_time = timestamp
                             ip = self.cal_current_ip
                             # save mapping: current viewing pose → this IP
@@ -107,7 +120,6 @@ class SensorTileHandler:
                                 logging.warning(f"Failed to turn off {ip}: {e}")
                             self.cal_index += 1
                             self.calibration_step()
-                            return
 
                     # SHAKE (roll) = reject/skip
                     if (self.last_roll_time is None) or (timestamp - self.last_roll_time) > CALIBRATION_COOLDOWN:
@@ -116,15 +128,11 @@ class SensorTileHandler:
                             logging.info(f"[CALIBRATE] Rejected {self.cal_current_ip} by head shake.")
                             self.cal_index += 1
                             self.calibration_step()
-                            return
-
-                    # Stay in CALIBRATING until one of the above happens
-                    return
 
                 # === NORMAL MODE ===
-                # detect_nod → toggle closest device
-                if self.last_nod_time is None or (timestamp - self.last_nod_time) > NOD_COOLDOWN:
-                    if not self.setup and detect_nod(self.data, NOD_MIN_AMPLITUDE):
+                if self.mode == "NORMAL" and not self.setup:
+                    # detect_nod → toggle closest device
+                    if (self.last_nod_time is None or (timestamp - self.last_nod_time) > NOD_COOLDOWN) and detect_nod_down(self.data, NOD_MIN_AMPLITUDE):
                         ip = self.find_closest_view(yaw, pitch)['item']
                         logging.info(f"The closest object position is the {ip}")
                         self.state[ip] = not self.state[ip]
@@ -132,16 +140,7 @@ class SensorTileHandler:
                             self.scan.run_command(ip, self.state[ip])
                         except Exception as e:
                             logging.warning(f"Failed to toggle {ip}: {e}")
-                        
-                    # elif self.setup and detect_roll(self.data, ROLL_MIN_AMPLITUDE):
-                    #     logging.info(f"Roll detected, saving {self.devices[self.object_index]}'s position -> Yaw: {yaw:.2f}, Pitch: {pitch:.2f}")
-                    #     position = {"item": self.devices[self.object_index], "yaw": yaw, "pitch": pitch}
-                    #     self.object_pos = pd.concat([self.object_pos, pd.DataFrame([position])], ignore_index=True)
-                    #     self.object_index += 1
-                    #     if self.object_index == len(self.devices):
-                    #         self.setup = False
-                    #         logging.info("Setup complete")
-                    # self.last_nod_time = timestamp
+                        self.last_nod_time = timestamp                    
             except Exception as e:
                 logging.error(f"Error decoding data: {e}")
 

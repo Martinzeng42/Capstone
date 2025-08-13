@@ -16,6 +16,7 @@ logging.basicConfig(
     ]
 )
 
+
 async def main():
     ### Scan network
     scan = Scan_Network()
@@ -47,9 +48,7 @@ async def main():
 
         logging.info("Begin streaming...")
         logging.info("Setup start")
-
-        if handler.setup or handler.object_pos.empty:
-            handler.start_calibration()
+        logging.info("Waiting for double nod gesture to start calibration...")
 
         try:
             while True:

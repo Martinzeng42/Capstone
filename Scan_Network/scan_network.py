@@ -5,6 +5,7 @@ from scapy.all import ARP, Ether, srp
 class Scan_Network:
     def __init__(self, subnet=None, flask_port=3333, tcp_port=4444):
         self.subnet = subnet or self.get_subnet()
+        print("Using subnet:", self.subnet)
         self.smart_device_FLASKPORT = flask_port
         self.smart_device_TCPPORT = tcp_port
         self.ready_devices = dict()
