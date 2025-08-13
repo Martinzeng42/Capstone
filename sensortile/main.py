@@ -48,6 +48,9 @@ async def main():
         logging.info("Begin streaming...")
         logging.info("Setup start")
 
+        if handler.setup or handler.object_pos.empty:
+            handler.start_calibration()
+
         try:
             while True:
                 await asyncio.sleep(1)
