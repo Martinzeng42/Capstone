@@ -2,7 +2,7 @@ import asyncio
 from bleak import BleakClient
 import logging
 from mac import ADDRESS
-from sensortile.sensor_handler import SensorTileHandler
+from sensortile.sensor_handler2 import SensorTileHandler
 from utils.constants import CHARACTERISTIC_01, CHARACTERISTIC_02, CSV_FILE, SAVE_LOGS
 from Scan_Network.scan_network import Scan_Network
 
@@ -23,7 +23,7 @@ async def main():
     ips = scan.get_devices_list()
     if not ips:
         logging.error("No device to connect to.")
-        return
+        # return
             
     ### Connect to Sensortile
     handler = SensorTileHandler(ips, scan)

@@ -113,6 +113,11 @@ class SensorTileHandler:
                         f"thresh={blink.HARD_BLINK_THRESH:.2f}mV"
                     )
 
+                # New stuff i added
+                blink_count = blink.analyze_blink_pattern(blink.signal_buffer)
+                if blink_count:
+                    logging.info(f" =-=-=-=-=-=-= Blink pattern detected: {blink_count}")
+
                 if SAVE_LOGS:
                     logging.info(f"Head Pose -> Yaw: {yaw:.2f}, Pitch: {pitch:.2f}, Roll: {roll:.2f}, Vafe: {vafe:.2f}")
                 
