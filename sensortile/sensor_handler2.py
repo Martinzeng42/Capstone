@@ -114,7 +114,9 @@ class SensorTileHandler:
                     )
 
                 # New stuff i added
-                blink_count = blink.analyze_blink_pattern()
+                # blink_count = blink.analyze_blink_pattern()
+                # blink_count = blink.pattern_detected_flag["count"]    # works but polls too much
+                blink_count = blink.get_latest_blink_count()     # added a getter method to multiple_blink_detections.py   #! if this doesnt work well, go back to prev method but add a delay
                 if blink_count:
                     logging.info(f" =-=-=-=-=-=-= Blink pattern detected: {blink_count}")
 
