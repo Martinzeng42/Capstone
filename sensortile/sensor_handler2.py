@@ -114,7 +114,7 @@ class SensorTileHandler:
                     )
 
                 # New stuff i added
-                blink_count = blink.analyze_blink_pattern(blink.signal_buffer)
+                blink_count = blink.analyze_blink_pattern()
                 if blink_count:
                     logging.info(f" =-=-=-=-=-=-= Blink pattern detected: {blink_count}")
 
