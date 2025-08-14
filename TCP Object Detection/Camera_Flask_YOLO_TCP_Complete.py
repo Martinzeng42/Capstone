@@ -669,7 +669,8 @@ def draw_commands_panel(frame, text_lines):
 
 # =============================================================
 
-ESP32_IP = '192.168.0.164'
+# ESP32_IP = '192.168.0.164'
+ESP32_IP = config.get("ip_base_url", "192.168.0.108")    # use the config file
 ESP32_PORT = 12345
 
 latest_frame = None
