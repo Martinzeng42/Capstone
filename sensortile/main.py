@@ -1,10 +1,13 @@
 import asyncio
 from bleak import BleakClient
 import logging
+import threading
 from mac import ADDRESS
-from sensortile.sensor_handler2 import SensorTileHandler
+from sensortile.sensor_handler import SensorTileHandler
 from utils.constants import CHARACTERISTIC_01, CHARACTERISTIC_02, CSV_FILE, SAVE_LOGS
 from Scan_Network.scan_network import Scan_Network
+from TCP_Object_Detection.StreamYOLOTCP_ServerOnly import StreamYOLOTCPServer
+import queue
 
 # Setup logging
 logging.basicConfig(
@@ -24,9 +27,18 @@ async def main():
     if not ips:
         logging.error("No device to connect to.")
         # return
-            
+
+    # Shared command queue to communicate between sensorhandler and camerahandler threads
+
+    cmd_queue = queue.Queue()
+    cam_data_queue = queue.Queue()
+    cam = StreamYOLOTCPServer(cmd_queue=cmd_queue, cam_data_queue=cam_data_queue)
+    threading.Thread(target=cam.run, kwargs={"headless": True}, daemon=True).start()
+
     ### Connect to Sensortile
     handler = SensorTileHandler(ips, scan)
+    handler.cmd_queue = cmd_queue   # give sensortile handler the same queue
+    handler.cam_data_queue = cam_data_queue
     logging.info("Connecting to SensorTile...")
 
     async with BleakClient(ADDRESS, timeout=60) as client:

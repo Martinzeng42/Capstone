@@ -1,8 +1,10 @@
 import numpy as np
 import pandas as pd
 import logging
+import time
 import os
 import struct
+import threading
 from sensortile.movement_detection import detect_nod, detect_roll, detect_nod_up, detect_nod_down
 import sensortile.multiple_blinks_detection as blink
 from utils.constants import CSV_HEADERS, NOD_TIME_WINDOW, NOD_MIN_AMPLITUDE, SAVE_LOGS, NOD_COOLDOWN, ROLL_MIN_AMPLITUDE, CALIBRATION_WAIT_S, CALIBRATION_WAIT_TRIGGER, CALIBRATION_COOLDOWN
@@ -13,20 +15,32 @@ class SensorTileHandler:
         self.object_pos = pd.DataFrame(columns=["item", "yaw", "pitch"])
         self.last_nod_time = None
         self.last_roll_time = None
-        # self.setup = True
-        self.setup = False    #! testing only normal mode, so skip
+        self.setup = True
+        # self.setup = False    #! testing only normal mode, so skip
         self.devices = devices      # List of IP strings
+        # self.devices = {"test1", "test2"}
         self.scan = scan            # Scan_Network class instance
         self.object_index = 0
         self.state = {device : False for device in self.devices}        # Keep on track Devices state
 
 
-        # Calibration variables
-        # self.mode = "normal"        
+        # Calibration variables       
         self.mode = "NORMAL"          #! testing only normal mode, so skip  
         self.cal_index = 0
         self.cal_started_at = None
         self.cal_current_ip = None
+
+        # Camera object detection Variables
+        # self.cam = cam
+        # self.cam_state = False
+        # self.cam.thread = None
+        
+        # Thread to thread communication
+        self.cmd_queue = None   # will be assigned from main
+        self.cam_data_queue = None   # will be assigned from main
+
+        # vAFE offset correction -> make baseline ~0
+        self.vafe_offset_correction_mv = 2000    #! put your value, should update this in the calibration mode
     
 
     def start_calibration(self):
@@ -78,6 +92,7 @@ class SensorTileHandler:
                 # logging.info("Packet received")
                 yaw, pitch, roll = struct.unpack("<fff", data[33:45])
                 vafe = struct.unpack("<f", data[61:65])[0]      # equivalent to eog_raw_lsb in Martin's code
+                vafe += self.vafe_offset_correction_mv
                 timestamp = pd.Timestamp.now()
 
                 new_row = {"timestamp": timestamp, "yaw": yaw, "pitch": pitch, "roll": roll, "vafe": vafe}
@@ -141,10 +156,18 @@ class SensorTileHandler:
                     # NOD = confirm mapping
                     if (self.last_nod_time is None) or (timestamp - self.last_nod_time) > NOD_COOLDOWN:
                         if detect_nod(self.data, NOD_MIN_AMPLITUDE):
+                            logging.info(f"Please wait and stay still to detect object and confirm object position...")
+                            
                             self.last_nod_time = timestamp
                             ip = self.cal_current_ip
                             # save mapping: current viewing pose → this IP
                             self.object_pos = pd.concat([self.object_pos, pd.DataFrame([{"item": ip, "yaw": float(yaw), "pitch": float(pitch)}])], ignore_index=True)
+                            
+                            # turn on camera
+                            self.cmd_queue.put("start_stream")
+
+                            
+
                             logging.info(f"[CALIBRATE] Confirmed {ip} at yaw={yaw:.1f}, pitch={pitch:.1f}")
                             # turn off and advance
                             try:
@@ -165,8 +188,19 @@ class SensorTileHandler:
                 # === NORMAL MODE ===
                 if self.mode == "NORMAL" and not self.setup:
                     # logging.info("Normal mode")
+
+                    # check if cam_data_queue has something
+                    if not self.cam_data_queue.empty():
+                        detected_object = self.cam_data_queue.get()
+                        # detected_object = self.cam_data_queue.get_nowait()   # get() should never wait anyways since we check if queue is empty. Also get_nowait() will raise an error if empty so need to put in try except block
+                        if detected_object:
+                            print("Data type of detected_object", type(detected_object))
+                            temp_test = detected_object  # get the first detected object
+                            print("Locked onto object:", temp_test)
+                            # listen for gestures for commanding the object
+                            # if other unused gesture... send commmand to smart device (bluetooth/wifi/wtv protocol)
+                        
                     # detect_nod → toggle closest device
-                    # if (self.last_nod_time is None or (timestamp - self.last_nod_time) > NOD_COOLDOWN) and detect_nod_down(self.data, NOD_MIN_AMPLITUDE):
                     if (self.last_nod_time is None or (timestamp - self.last_nod_time) > NOD_COOLDOWN) and detect_nod_down(self.data, NOD_MIN_AMPLITUDE):
                         logging.info("Gesture detected ===========================================")
                         ip = self.find_closest_view(yaw, pitch)['item']
@@ -176,7 +210,12 @@ class SensorTileHandler:
                             self.scan.run_command(ip, self.state[ip])
                         except Exception as e:
                             logging.warning(f"Failed to toggle {ip}: {e}")
-                        self.last_nod_time = timestamp                    
+                        self.last_nod_time = timestamp 
+
+                        # turn on camera
+                        self.cmd_queue.put("start_stream")
+                        
+
             except Exception as e:
                 logging.error(f"Error decoding data: {e}")
 

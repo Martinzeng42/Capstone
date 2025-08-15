@@ -44,7 +44,7 @@ PLOT_BUFFER_SIZE = int(FS * PLOT_WINDOW_SEC)
 # HARD BLINK THRESHOLDS - keep the original reliable settings
 # HARD_BLINK_THRESH = 6.0      # 6mV threshold for hard blinks (same as original)
 # HARD_BLINK_THRESH = 8.0      # 10mV threshold for hard blinks (increasing for hard blinks)
-HARD_BLINK_THRESH = 5.0      # 10mV threshold for hard blinks (increasing for hard blinks)
+HARD_BLINK_THRESH = 1.0      # 10mV threshold for hard blinks (increasing for hard blinks)
 BLINK_MIN_SAMPLES = int(FS * 0.05)   # 50ms minimum duration
 BLINK_MAX_SAMPLES = int(FS * 0.6)    # 600ms maximum duration
 BASELINE_WINDOW = int(FS * 2.5)      # 2.5 second baseline calculation
