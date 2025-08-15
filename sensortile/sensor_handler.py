@@ -12,7 +12,7 @@ from utils.constants import CSV_HEADERS, NOD_TIME_WINDOW, NOD_MIN_AMPLITUDE, SAV
 class SensorTileHandler:
     def __init__(self, devices, scan):
         self.data = pd.DataFrame(columns=CSV_HEADERS)
-        self.object_pos = pd.DataFrame(columns=["item", "yaw", "pitch"])
+        self.object_pos = pd.DataFrame(columns=["ip", "name", "yaw", "pitch"])
         self.last_nod_time = None
         self.last_roll_time = None
         self.setup = True
@@ -160,15 +160,21 @@ class SensorTileHandler:
                             
                             self.last_nod_time = timestamp
                             ip = self.cal_current_ip
-                            # save mapping: current viewing pose → this IP
-                            self.object_pos = pd.concat([self.object_pos, pd.DataFrame([{"item": ip, "yaw": float(yaw), "pitch": float(pitch)}])], ignore_index=True)
                             
                             # turn on camera
                             self.cmd_queue.put("start_stream")
+                            
+                            # retrieve detected object: I copy pasted the code from line 199
+                            if not self.cam_data_queue.empty():
+                                detected_object = self.cam_data_queue.get()
+                                # save mapping: current viewing pose → this IP
+                                self.object_pos = pd.concat([self.object_pos, pd.DataFrame([{"ip": ip, "name": detected_object, "yaw": float(yaw), "pitch": float(pitch)}])], ignore_index=True)
+                                logging.info(f"[CALIBRATE] Confirmed {detected_object} at yaw={yaw:.1f}, pitch={pitch:.1f}")
+                            
+                            else:
+                                logging.warning("No object detected by the camera. Skipping...")
 
                             
-
-                            logging.info(f"[CALIBRATE] Confirmed {ip} at yaw={yaw:.1f}, pitch={pitch:.1f}")
                             # turn off and advance
                             try:
                                 self.scan.run_command(ip, False)
@@ -203,8 +209,8 @@ class SensorTileHandler:
                     # detect_nod → toggle closest device
                     if (self.last_nod_time is None or (timestamp - self.last_nod_time) > NOD_COOLDOWN) and detect_nod_down(self.data, NOD_MIN_AMPLITUDE):
                         logging.info("Gesture detected ===========================================")
-                        ip = self.find_closest_view(yaw, pitch)['item']
-                        logging.info(f"The closest object position is the {ip}")
+                        ip, name = self.find_closest_view(yaw, pitch)
+                        logging.info(f"The closest object position is the {name}, its ip is {ip}")
                         self.state[ip] = not self.state[ip]
                         try:
                             self.scan.run_command(ip, self.state[ip])
@@ -241,4 +247,4 @@ class SensorTileHandler:
             axis=1
         )
         closest_idx = distances.idxmin()
-        return self.object_pos.loc[closest_idx]
+        return self.object_pos.loc[closest_idx]["ip"], self.object_pos.loc[closest_idx]["name"]
