@@ -79,7 +79,7 @@ class StreamYOLOTCPServer:
         self.auto = False
         self.det_thread = None
         self.det_run = threading.Event()
-        
+
         if YOLO_AVAILABLE and self.cfg.get("yolo_model"):
             try:
                 self.model = YOLO(self.cfg["yolo_model"])
@@ -133,23 +133,22 @@ class StreamYOLOTCPServer:
         all_detections = []
         for frame in frames:
             results = self.model.predict(source=frame, imgsz=self.cfg["imgsz"],
-                                         conf=self.cfg["conf"], classes=self.cfg["classes"], verbose=True)
+                                         conf=self.cfg["conf"], classes=self.cfg["classes"], verbose=False)
             # write detected objects to global variable
             r = results[0]
             # Get detected object names
             detected_names = [r.names[int(cls)] for cls in r.boxes.cls]
-            print("Detected objects:", detected_names)
             if detected_names:
                 all_detections.extend(detected_names)
 
         if all_detections:
-            print("List of all detections:", all_detections)
             most_common = Counter(all_detections).most_common(1)[0][0]
             print("Most common object:", most_common)
             print("Data type of most_common:", type(most_common))
             self.cam_data_queue.put(most_common)
         else:
             print("No objects detected in any frame.")
+            self.cam_data_queue.put("EMPTY")
 
     # -------------- Public actions --------------
     def start(self):

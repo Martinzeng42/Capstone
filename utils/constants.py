@@ -7,7 +7,9 @@ SAVE_LOGS = False
 ROLL_MIN_AMPLITUDE = 20
 NOD_MIN_AMPLITUDE = 30
 NOD_TIME_WINDOW = 1.5   # seconds
-NOD_COOLDOWN = pd.Timedelta(seconds=2.0)
+NOD_COOLDOWN = pd.Timedelta(seconds=3.0)
+ROLL_COOLDOWN = pd.Timedelta(seconds=5.0)
+BLINK_COOLDOWN = pd.Timedelta(seconds=5.0)
 
 CALIBRATION_WAIT_S = 10.0       # Time window to wait for the gesture per IP
 CALIBRATION_WAIT_TRIGGER = 3.0  # Time window for double-trigger
