@@ -1,0 +1,12 @@
+tcp_host: "0.0.0.0"
+tcp_port: 12345
+yolo_model: "yolo11m.pt"    # ex) "yolov8n.pt", "yolo11n.pt"
+imgsz: 640
+conf: 0.4    # default is 0.25
+classes:    # https://github.com/ultralytics/ultralytics/blob/9dccbd42298ce801054cb90cd0da0442b2adb10d/ultralytics/cfg/datasets/coco.yaml
+  - 39    # Bottle
+  - 62    # TV
+  - 63    # Laptop
+  - 66    # Keyboard
+  - 67    # Cell Phone
+  - 76    # Scissors

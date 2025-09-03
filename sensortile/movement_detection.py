@@ -49,6 +49,26 @@ def detect_nod_down(df, min_amplitude):
 
     return False
 
+def detect_nod(df, min_amplitude):
+    pitch = df["pitch"].values
+    if len(pitch) < 3:
+        return False
+
+    pitch_max = np.max(pitch)
+    pitch_min = np.min(pitch)
+    delta = pitch_max - pitch_min
+
+    if delta < min_amplitude:
+        return False
+
+    # Confirm that the movement returned toward the opposite extreme
+    latest_pitch = pitch[-1]
+
+    if (latest_pitch - pitch_min > min_amplitude) or (pitch_max - latest_pitch > min_amplitude):
+        return True
+
+    return False
+
 def detect_roll(df, min_amplitude):
     roll = df["roll"].values
     if len(roll) < 3:

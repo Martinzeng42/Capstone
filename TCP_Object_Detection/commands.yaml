@@ -1,0 +1,21 @@
+bottle:
+  "1": "Open bottle"
+  "2": "Close bottle"
+  "3": "Pour liquid"
+
+cell phone:
+  "1": "Call contact"
+  "2": "Send SMS"
+
+laptop:
+  "1": "Open browser"
+  "2": "Shutdown laptop"
+  "3": "Play video"
+  "4": "Mute audio"
+
+keyboard:
+  "1": "Type hello"
+  "2": "Enable caps lock"
+
+scissors:
+  "1": "Cut paper"
